@@ -1,0 +1,143 @@
+```{r}
+library(tidyverse)
+```
+
+```{r}
+data <- read_delim("data/data_csv.csv", delim =",", n_max = 10)
+
+data$Группа <- factor(data$Группа)
+data$Пол <- factor(data$Пол)
+data$`Группа крови` <- factor(data$`Группа крови`)
+
+data
+```
+
+
+```{r}
+data1 <- read_delim("data/data_tsv.tsv", skip = 0, n_max = 1000)
+
+data1
+```
+
+
+```{r}
+readxl::read_excel("data/data_excel.xlsx", sheet = "data")
+
+openxlsx::write.xlsx(data, "out/data_excel.xlsx", colNames = TRUE)
+```
+
+
+```{r}
+read_rds("data/data_rds.rds")
+
+write_rds(data, "out/data_rds.rds")
+```
+
+
+```{r}
+data$`Группа крови`
+
+data[["Группа крови"]] # то же самое, другой синтаксис
+```
+
+
+```{r}
+tibble(
+  var_first = 1:10,
+  var_second = var_first^2
+)
+
+tibble(
+  var_first = 1:10,
+  var_second = if_else(var_first < 5, var_first + 100, var_first)
+)
+```
+
+
+```{r}
+data |>
+  add_column(just_column = "just values", .before = 1)
+
+data |>
+  add_row(Группа = "New group", Возраст = 100, .before = 1)
+
+data |>
+  mutate(ID = row_number())
+```
+
+```{r}
+data <- read_tsv("data/data_tsv.tsv", show_col_types = FALSE)
+data$Группа <- factor(data$Группа)
+data$Пол <- factor(data$Пол)
+data$`Группа крови` <- factor(
+  data$`Группа крови`,
+  levels = c("O (I)", "A (II)", "B (III)", "AB (IV)")
+)
+
+data
+```
+
+
+```{r}
+data
+
+data |> select(`Группа крови`, `Рост`)
+
+data |> select(starts_with("б"))
+data |> select(contains("_E1"))
+data |> select(matches("_E\\d{1}"))
+
+data |> select(where(is.numeric))
+data |> select(where(function(x) is.numeric(x) && mean(x, na.rm = TRUE) > 10))
+
+variables <- c("Базофилы_E1", "Эозинофилы_E1", "Гемоглобин_E1")
+data |> select(all_of(variables))
+
+variables_missing <- c(variables, "Имя отсутствующей переменной")
+data |> select(any_of(variables_missing))
+
+data |> select(`Группа`, starts_with("Гемоглобин"))
+data |> select(!where(is.numeric))
+```
+
+
+```{r}
+library(tidyverse)
+library(flextable)
+
+data <- read_tsv("data/data_tsv.tsv", show_col_types = FALSE)
+data$Группа <- factor(data$Группа)
+data$Пол <- factor(data$Пол)
+data$`Группа крови` <- factor(
+  data$`Группа крови`,
+  levels = c("O (I)", "A (II)", "B (III)", "AB (IV)")
+)
+
+statistics <- list(
+  `Количество субъектов` = ~ length(.x),
+  `Количество (есть данные)` = ~ sum(!is.na(.x)),
+  `Нет данных` = ~ sum(is.na(.x)),
+  `Ср. знач.` = ~ mean(.x, na.rm = TRUE),
+  `Станд. отклон.` = ~ sd(.x, na.rm = TRUE),
+  `мин.` = ~ min(.x, na.rm = TRUE),
+  `макс.` = ~ max(.x, na.rm = TRUE),
+  `Медиана` = ~ median(.x, na.rm = TRUE),
+  `Q1` = ~ quantile(.x, 0.25, na.rm = TRUE),
+  `Q3` = ~ quantile(.x, 0.75, na.rm = TRUE)
+)
+
+table <- data |>
+  select(`Группа`, where(is.numeric)) |>
+  group_by(`Группа`) |>
+  summarise(across(where(is.numeric), statistics, .names = "{.col}__{.fn}")) |>
+  mutate(across(-`Группа`, function(x) round(x, 2))) |>
+  mutate(across(-`Группа`, as.character)) |>
+  mutate(across(-`Группа`, function(x) replace_na(x, "Н/П*"))) |>
+  pivot_longer(!`Группа`) |>
+  separate(name, into = c("Переменная", "Статистика"), sep = "__") |>
+  rename(`Значение` = value)
+
+table |>
+  flextable() |>
+  theme_alafoli()
+```
